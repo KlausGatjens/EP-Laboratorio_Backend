@@ -1,0 +1,446 @@
+# =============================================================================
+# Restaurante Sazón Criolla - Pruebas de los endpoints (extensión REST Client de VS Code)
+# -----------------------------------------------------------------------------
+# Requisitos: API iniciada (npm run dev) y bases cargadas con los repositorios
+# EP-Laboratorio_BBDD y EP-Laboratorio_MongoDB.
+#
+# Ejecutar de arriba hacia abajo ("Send Request"): las peticiones con "# @name"
+# guardan la respuesta y las siguientes reutilizan sus datos (idMesa, idUsuario...).
+# Las fechas se calculan solas: {{dia}} = hoy + 30 días.
+# El archivo es re-ejecutable: la sección LIMPIEZA borra lo que se creó.
+# =============================================================================
+
+@baseUrl = http://localhost:3000/api/v1
+@dia = {{$localDatetime 'YYYY-MM-DD' 30 d}}
+
+### Índice de la API -> 200
+GET {{baseUrl}}
+
+### Health check -> 200 si SQL Server y MongoDB responden (503 si alguno falla)
+GET {{baseUrl}}/salud
+
+# -----------------------------------------------------------------------------
+# ZONAS (catálogo)
+# -----------------------------------------------------------------------------
+
+### Listar zonas con su cantidad de mesas -> 200
+GET {{baseUrl}}/zonas
+
+### Obtener una zona -> 200
+GET {{baseUrl}}/zonas/2
+
+### Crear zona -> 201 + cabecera Location (si se ejecuta otra vez -> 409 nombre duplicado)
+POST {{baseUrl}}/zonas
+Content-Type: application/json
+
+{
+    "nombre": "Segundo piso",
+    "descripcion": "Salón para eventos privados con vista a la avenida"
+}
+
+### Zona inexistente -> 404
+GET {{baseUrl}}/zonas/999
+
+# -----------------------------------------------------------------------------
+# MESAS
+# -----------------------------------------------------------------------------
+
+### Crear mesa -> 201 + cabecera Location
+# @name crearMesa
+POST {{baseUrl}}/mesas
+Content-Type: application/json
+
+{
+    "numero": 106,
+    "capacidad": 4,
+    "idZona": 1
+}
+
+### Listar mesas -> 200
+GET {{baseUrl}}/mesas
+
+### Filtrar mesas: terraza, para 6 o más personas, activas -> 200
+GET {{baseUrl}}/mesas?idZona=2&capacidadMinima=6&activa=true
+
+### Obtener mesa (incluye la valoración promedio calculada en MongoDB) -> 200
+GET {{baseUrl}}/mesas/3
+
+### Actualizar mesa (PUT = reemplazo completo) -> 200
+PUT {{baseUrl}}/mesas/{{crearMesa.response.body.idMesa}}
+Content-Type: application/json
+
+{
+    "numero": 106,
+    "capacidad": 4,
+    "idZona": 1,
+    "activa": true
+}
+
+### Número de mesa duplicado -> 409
+POST {{baseUrl}}/mesas
+Content-Type: application/json
+
+{
+    "numero": 106,
+    "capacidad": 2,
+    "idZona": 1
+}
+
+### Zona inexistente -> 404
+POST {{baseUrl}}/mesas
+Content-Type: application/json
+
+{
+    "numero": 999,
+    "capacidad": 2,
+    "idZona": 999
+}
+
+### Validación -> 400 con el detalle de cada campo
+POST {{baseUrl}}/mesas
+Content-Type: application/json
+
+{
+    "numero": 0,
+    "capacidad": 30,
+    "idZona": "uno"
+}
+
+# -----------------------------------------------------------------------------
+# USUARIOS (clientes)
+# -----------------------------------------------------------------------------
+
+### Crear usuario -> 201
+# @name crearUsuario
+POST {{baseUrl}}/usuarios
+Content-Type: application/json
+
+{
+    "nombres": "Rosa",
+    "apellidos": "Quispe Mamani",
+    "correo": "rosa.quispe@correo.pe",
+    "telefono": "999 888 777"
+}
+
+### Listar usuarios -> 200
+GET {{baseUrl}}/usuarios
+
+### Obtener usuario -> 200
+GET {{baseUrl}}/usuarios/{{crearUsuario.response.body.idUsuario}}
+
+### Actualizar usuario (PUT = reemplazo completo) -> 200
+PUT {{baseUrl}}/usuarios/{{crearUsuario.response.body.idUsuario}}
+Content-Type: application/json
+
+{
+    "nombres": "Rosa María",
+    "apellidos": "Quispe Mamani",
+    "correo": "rosa.quispe@correo.pe",
+    "telefono": "+51 999 888 777"
+}
+
+### Correo duplicado -> 409
+POST {{baseUrl}}/usuarios
+Content-Type: application/json
+
+{
+    "nombres": "Otra",
+    "apellidos": "Persona",
+    "correo": "rosa.quispe@correo.pe",
+    "telefono": "911222333"
+}
+
+### Validación -> 400 (correo y teléfono inválidos)
+POST {{baseUrl}}/usuarios
+Content-Type: application/json
+
+{
+    "nombres": "Ana",
+    "apellidos": "Torres",
+    "correo": "ana@",
+    "telefono": "12"
+}
+
+# -----------------------------------------------------------------------------
+# RESERVAS: POST, PUT y DELETE ejecutan procedimientos almacenados
+# -----------------------------------------------------------------------------
+
+### ¿Qué mesas están libres para 4 personas de 20:00 a 22:00? -> 200
+GET {{baseUrl}}/mesas/disponibles?fechaInicio={{dia}}T20:00:00-05:00&fechaFin={{dia}}T22:00:00-05:00&personas=4
+
+### Registrar reserva (dbo.RegistrarReserva) -> 201
+# @name crearReserva
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+    "idMesa": {{crearMesa.response.body.idMesa}},
+    "idUsuario": {{crearUsuario.response.body.idUsuario}},
+    "fechaInicio": "{{dia}}T20:00:00-05:00",
+    "fechaFin": "{{dia}}T22:00:00-05:00",
+    "numeroPersonas": 4,
+    "observaciones": "Cumpleaños: llevarán torta"
+}
+
+### La mesa ya no aparece como disponible en ese horario -> 200
+GET {{baseUrl}}/mesas/disponibles?fechaInicio={{dia}}T20:00:00-05:00&fechaFin={{dia}}T22:00:00-05:00&personas=4
+
+### Misma mesa, horario que se cruza, otro cliente -> 409 (50009)
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+    "idMesa": {{crearMesa.response.body.idMesa}},
+    "idUsuario": 1,
+    "fechaInicio": "{{dia}}T21:00:00-05:00",
+    "fechaFin": "{{dia}}T22:30:00-05:00",
+    "numeroPersonas": 2
+}
+
+### El mismo cliente en otra mesa a la misma hora -> 409 (50010)
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+    "idMesa": 4,
+    "idUsuario": {{crearUsuario.response.body.idUsuario}},
+    "fechaInicio": "{{dia}}T20:30:00-05:00",
+    "fechaFin": "{{dia}}T21:30:00-05:00",
+    "numeroPersonas": 2
+}
+
+### Más personas que la capacidad de la mesa -> 409 (50008)
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+    "idMesa": 1,
+    "idUsuario": 1,
+    "fechaInicio": "{{dia}}T13:00:00-05:00",
+    "fechaFin": "{{dia}}T14:30:00-05:00",
+    "numeroPersonas": 5
+}
+
+### Mesa 402 fuera de servicio -> 409 (50006)
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+    "idMesa": 12,
+    "idUsuario": 1,
+    "fechaInicio": "{{dia}}T13:00:00-05:00",
+    "fechaFin": "{{dia}}T14:30:00-05:00",
+    "numeroPersonas": 2
+}
+
+### Mesa inexistente -> 404 (50005)
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+    "idMesa": 999,
+    "idUsuario": 1,
+    "fechaInicio": "{{dia}}T13:00:00-05:00",
+    "fechaFin": "{{dia}}T14:30:00-05:00",
+    "numeroPersonas": 2
+}
+
+### Fecha pasada -> 400 (50002)
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+    "idMesa": 4,
+    "idUsuario": 1,
+    "fechaInicio": "2025-01-10T20:00:00-05:00",
+    "fechaFin": "2025-01-10T22:00:00-05:00",
+    "numeroPersonas": 2
+}
+
+### Fuera del horario de atención (09:00, abre a las 12:00) -> 400 (50004)
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+    "idMesa": 4,
+    "idUsuario": 1,
+    "fechaInicio": "{{dia}}T09:00:00-05:00",
+    "fechaFin": "{{dia}}T10:00:00-05:00",
+    "numeroPersonas": 2
+}
+
+### Reserva de 5 horas (máximo 4) -> 400 (50003)
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+    "idMesa": 4,
+    "idUsuario": 1,
+    "fechaInicio": "{{dia}}T13:00:00-05:00",
+    "fechaFin": "{{dia}}T18:00:00-05:00",
+    "numeroPersonas": 2
+}
+
+### Fechas invertidas -> 400 (lo detecta el middleware de validación)
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+    "idMesa": 4,
+    "idUsuario": 1,
+    "fechaInicio": "{{dia}}T22:00:00-05:00",
+    "fechaFin": "{{dia}}T20:00:00-05:00",
+    "numeroPersonas": 2
+}
+
+### Fecha sin zona horaria -> 400
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+    "idMesa": 4,
+    "idUsuario": 1,
+    "fechaInicio": "{{dia}}T20:00:00",
+    "fechaFin": "{{dia}}T22:00:00",
+    "numeroPersonas": 2
+}
+
+### Listar reservas con filtros (mesa y rango de fechas) -> 200
+GET {{baseUrl}}/reservas?idMesa={{crearMesa.response.body.idMesa}}&desde={{dia}}&hasta={{dia}}T23:59:00
+
+### Obtener reserva (con número de mesa, zona y cliente) -> 200
+GET {{baseUrl}}/reservas/{{crearReserva.response.body.idReserva}}
+
+### Reprogramar reserva (dbo.ActualizarReserva) -> 200
+PUT {{baseUrl}}/reservas/{{crearReserva.response.body.idReserva}}
+Content-Type: application/json
+
+{
+    "idMesa": {{crearMesa.response.body.idMesa}},
+    "idUsuario": {{crearUsuario.response.body.idUsuario}},
+    "fechaInicio": "{{dia}}T13:00:00-05:00",
+    "fechaFin": "{{dia}}T15:00:00-05:00",
+    "numeroPersonas": 3,
+    "observaciones": "Cambiaron la cena por almuerzo"
+}
+
+### Reservas de una mesa (sub-recurso) -> 200
+GET {{baseUrl}}/mesas/{{crearMesa.response.body.idMesa}}/reservas
+
+### Reservas de un usuario (sub-recurso) -> 200
+GET {{baseUrl}}/usuarios/{{crearUsuario.response.body.idUsuario}}/reservas
+
+### Eliminar una mesa con reservas -> 409 (integridad referencial)
+DELETE {{baseUrl}}/mesas/{{crearMesa.response.body.idMesa}}
+
+### Eliminar un usuario con reservas -> 409 (integridad referencial)
+DELETE {{baseUrl}}/usuarios/{{crearUsuario.response.body.idUsuario}}
+
+### Cancelar una reserva que ya pasó (reserva 1 de la carga inicial) -> 409 (50012)
+DELETE {{baseUrl}}/reservas/1
+
+### Reserva inexistente -> 404
+GET {{baseUrl}}/reservas/999999
+
+# -----------------------------------------------------------------------------
+# COMENTARIOS / RESEÑAS (MongoDB)
+# -----------------------------------------------------------------------------
+
+### Reseñar la reserva 6 (visita ya terminada, aún sin reseña) -> 201
+# @name crearComentario
+POST {{baseUrl}}/comentarios
+Content-Type: application/json
+
+{
+    "idReserva": 6,
+    "calificacion": 4,
+    "aspectos": { "comida": 5, "servicio": 4, "ambiente": 4 },
+    "texto": "Buena reunión en la terraza. Los anticuchos, muy ricos; el pisco sour llegó un poco tarde.",
+    "etiquetas": ["anticuchos", "grupo"]
+}
+
+### Segunda reseña para la misma reserva -> 409
+POST {{baseUrl}}/comentarios
+Content-Type: application/json
+
+{
+    "idReserva": 6,
+    "calificacion": 5,
+    "texto": "Otra reseña"
+}
+
+### Reseñar una reserva futura (reserva 7) -> 409
+POST {{baseUrl}}/comentarios
+Content-Type: application/json
+
+{
+    "idReserva": 7,
+    "calificacion": 5,
+    "texto": "Todavía no voy"
+}
+
+### Calificación fuera de rango -> 400
+POST {{baseUrl}}/comentarios
+Content-Type: application/json
+
+{
+    "idReserva": 6,
+    "calificacion": 9,
+    "texto": "Excelente"
+}
+
+### Listar reseñas paginadas -> 200
+GET {{baseUrl}}/comentarios?pagina=1&limite=10
+
+### Reseñas de la mesa 103 (idMesa 3) con 4 estrellas o más -> 200
+GET {{baseUrl}}/comentarios?idMesa=3&calificacionMinima=4
+
+### Búsqueda de texto en las reseñas -> 200
+GET {{baseUrl}}/comentarios?buscar=ceviche
+
+### Promedio por zona y por aspecto (aggregate) -> 200
+GET {{baseUrl}}/comentarios/resumen
+
+### Obtener una reseña -> 200
+GET {{baseUrl}}/comentarios/{{crearComentario.response.body._id}}
+
+# -----------------------------------------------------------------------------
+# LOGS (MongoDB)
+# -----------------------------------------------------------------------------
+
+### Últimos logs paginados -> 200
+GET {{baseUrl}}/logs?pagina=1&limite=10
+
+### Solo eventos de auditoría -> 200
+GET {{baseUrl}}/logs?tipo=auditoria
+
+### Solo advertencias (respuestas 4xx) -> 200
+GET {{baseUrl}}/logs?nivel=warn
+
+### Logs de hoy -> 200
+GET {{baseUrl}}/logs?desde={{$localDatetime 'YYYY-MM-DD'}}
+
+### Resumen por tipo y nivel (aggregate) -> 200
+GET {{baseUrl}}/logs/resumen
+
+# -----------------------------------------------------------------------------
+# LIMPIEZA (deja la base como estaba)
+# -----------------------------------------------------------------------------
+
+### Eliminar la reseña -> 204
+DELETE {{baseUrl}}/comentarios/{{crearComentario.response.body._id}}
+
+### Cancelar la reserva (dbo.CancelarReserva) -> 204
+DELETE {{baseUrl}}/reservas/{{crearReserva.response.body.idReserva}}
+
+### Cancelarla otra vez -> 404 (50011)
+DELETE {{baseUrl}}/reservas/{{crearReserva.response.body.idReserva}}
+
+### Eliminar la mesa (ya sin reservas) -> 204
+DELETE {{baseUrl}}/mesas/{{crearMesa.response.body.idMesa}}
+
+### Eliminar el usuario (ya sin reservas) -> 204
+DELETE {{baseUrl}}/usuarios/{{crearUsuario.response.body.idUsuario}}
+
+### Método no permitido -> 405 con cabecera Allow
+PATCH {{baseUrl}}/mesas

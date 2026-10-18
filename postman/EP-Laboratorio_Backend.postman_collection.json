@@ -1,0 +1,2193 @@
+{
+  "info": {
+    "name": "Restaurante Sazón Criolla - API de Reservas",
+    "description": "API REST de reservas de mesas (Express + SQL Server + MongoDB). Ejecutar con \"Run collection\" en orden: cada creación guarda su id en variables de colección. La variable {{dia}} se calcula sola (hoy + 30 días) en el script previo de la colección.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Día de las reservas de prueba: hoy + 30 días (formato YYYY-MM-DD).",
+          "const fecha = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+          "const dosDigitos = (n) => String(n).padStart(2, '0');",
+          "pm.collectionVariables.set('dia', `${fecha.getFullYear()}-${dosDigitos(fecha.getMonth() + 1)}-${dosDigitos(fecha.getDate())}`);"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Sistema",
+      "item": [
+        {
+          "name": "Índice de la API (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": []
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Health check (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/salud",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "salud"
+              ]
+            },
+            "description": "200 si SQL Server y MongoDB responden; 503 si alguno falla"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Zonas",
+      "item": [
+        {
+          "name": "Listar zonas (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/zonas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zonas"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Obtener zona (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/zonas/2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zonas",
+                "2"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Zona inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/zonas/999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zonas",
+                "999"
+              ]
+            },
+            "description": "Respuesta esperada: 404"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mesas",
+      "item": [
+        {
+          "name": "Crear mesa (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Cabecera Location\", () => pm.response.to.have.header(\"Location\"));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"idMesa\", pm.response.json().idMesa);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"numero\": 106,\n    \"capacidad\": 4,\n    \"idZona\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas"
+              ]
+            },
+            "description": "Respuesta esperada: 201"
+          }
+        },
+        {
+          "name": "Listar mesas (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mesas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Filtrar mesas (terraza, 6+ personas, activas) (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mesas?idZona=2&capacidadMinima=6&activa=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas"
+              ],
+              "query": [
+                {
+                  "key": "idZona",
+                  "value": "2"
+                },
+                {
+                  "key": "capacidadMinima",
+                  "value": "6"
+                },
+                {
+                  "key": "activa",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Obtener mesa con valoración (MongoDB) (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mesas/3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas",
+                "3"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Actualizar mesa (PUT) (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"numero\": 106,\n    \"capacidad\": 4,\n    \"idZona\": 1,\n    \"activa\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesas/{{idMesa}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas",
+                "{{idMesa}}"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Número de mesa duplicado (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"numero\": 106,\n    \"capacidad\": 2,\n    \"idZona\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas"
+              ]
+            },
+            "description": "Respuesta esperada: 409"
+          }
+        },
+        {
+          "name": "Zona inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"numero\": 999,\n    \"capacidad\": 2,\n    \"idZona\": 999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas"
+              ]
+            },
+            "description": "Respuesta esperada: 404"
+          }
+        },
+        {
+          "name": "Validación de campos (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"numero\": 0,\n    \"capacidad\": 30,\n    \"idZona\": \"uno\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/mesas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas"
+              ]
+            },
+            "description": "Respuesta esperada: 400"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuarios",
+      "item": [
+        {
+          "name": "Crear usuario (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Cabecera Location\", () => pm.response.to.have.header(\"Location\"));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"idUsuario\", pm.response.json().idUsuario);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nombres\": \"Rosa\",\n    \"apellidos\": \"Quispe Mamani\",\n    \"correo\": \"rosa.quispe@correo.pe\",\n    \"telefono\": \"999 888 777\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "description": "Respuesta esperada: 201"
+          }
+        },
+        {
+          "name": "Listar usuarios (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Obtener usuario (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{idUsuario}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{idUsuario}}"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Actualizar usuario (PUT) (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nombres\": \"Rosa María\",\n    \"apellidos\": \"Quispe Mamani\",\n    \"correo\": \"rosa.quispe@correo.pe\",\n    \"telefono\": \"+51 999 888 777\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{idUsuario}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{idUsuario}}"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Correo duplicado (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nombres\": \"Otra\",\n    \"apellidos\": \"Persona\",\n    \"correo\": \"rosa.quispe@correo.pe\",\n    \"telefono\": \"911222333\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "description": "Respuesta esperada: 409"
+          }
+        },
+        {
+          "name": "Validación de correo y teléfono (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nombres\": \"Ana\",\n    \"apellidos\": \"Torres\",\n    \"correo\": \"ana@\",\n    \"telefono\": \"12\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "description": "Respuesta esperada: 400"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reservas",
+      "item": [
+        {
+          "name": "Mesas disponibles para 4 personas (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mesas/disponibles?fechaInicio={{dia}}T20:00:00-05:00&fechaFin={{dia}}T22:00:00-05:00&personas=4",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas",
+                "disponibles"
+              ],
+              "query": [
+                {
+                  "key": "fechaInicio",
+                  "value": "{{dia}}T20:00:00-05:00"
+                },
+                {
+                  "key": "fechaFin",
+                  "value": "{{dia}}T22:00:00-05:00"
+                },
+                {
+                  "key": "personas",
+                  "value": "4"
+                }
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Registrar reserva (dbo.RegistrarReserva) (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Cabecera Location\", () => pm.response.to.have.header(\"Location\"));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"idReserva\", pm.response.json().idReserva);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idMesa\": {{idMesa}},\n    \"idUsuario\": {{idUsuario}},\n    \"fechaInicio\": \"{{dia}}T20:00:00-05:00\",\n    \"fechaFin\": \"{{dia}}T22:00:00-05:00\",\n    \"numeroPersonas\": 4,\n    \"observaciones\": \"Cumpleaños: llevarán torta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas"
+              ]
+            },
+            "description": "Respuesta esperada: 201"
+          }
+        },
+        {
+          "name": "Mesa ocupada en ese horario (50009) (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idMesa\": {{idMesa}},\n    \"idUsuario\": 1,\n    \"fechaInicio\": \"{{dia}}T21:00:00-05:00\",\n    \"fechaFin\": \"{{dia}}T22:30:00-05:00\",\n    \"numeroPersonas\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas"
+              ]
+            },
+            "description": "Respuesta esperada: 409"
+          }
+        },
+        {
+          "name": "Cliente con otra reserva a la misma hora (50010) (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idMesa\": 4,\n    \"idUsuario\": {{idUsuario}},\n    \"fechaInicio\": \"{{dia}}T20:30:00-05:00\",\n    \"fechaFin\": \"{{dia}}T21:30:00-05:00\",\n    \"numeroPersonas\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas"
+              ]
+            },
+            "description": "Respuesta esperada: 409"
+          }
+        },
+        {
+          "name": "Capacidad insuficiente (50008) (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idMesa\": 1,\n    \"idUsuario\": 1,\n    \"fechaInicio\": \"{{dia}}T13:00:00-05:00\",\n    \"fechaFin\": \"{{dia}}T14:30:00-05:00\",\n    \"numeroPersonas\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas"
+              ]
+            },
+            "description": "Respuesta esperada: 409"
+          }
+        },
+        {
+          "name": "Mesa fuera de servicio (50006) (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idMesa\": 12,\n    \"idUsuario\": 1,\n    \"fechaInicio\": \"{{dia}}T13:00:00-05:00\",\n    \"fechaFin\": \"{{dia}}T14:30:00-05:00\",\n    \"numeroPersonas\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas"
+              ]
+            },
+            "description": "Respuesta esperada: 409"
+          }
+        },
+        {
+          "name": "Mesa inexistente (50005) (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idMesa\": 999,\n    \"idUsuario\": 1,\n    \"fechaInicio\": \"{{dia}}T13:00:00-05:00\",\n    \"fechaFin\": \"{{dia}}T14:30:00-05:00\",\n    \"numeroPersonas\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas"
+              ]
+            },
+            "description": "Respuesta esperada: 404"
+          }
+        },
+        {
+          "name": "Fecha pasada (50002) (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idMesa\": 4,\n    \"idUsuario\": 1,\n    \"fechaInicio\": \"2025-01-10T20:00:00-05:00\",\n    \"fechaFin\": \"2025-01-10T22:00:00-05:00\",\n    \"numeroPersonas\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas"
+              ]
+            },
+            "description": "Respuesta esperada: 400"
+          }
+        },
+        {
+          "name": "Fuera del horario de atención (50004) (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idMesa\": 4,\n    \"idUsuario\": 1,\n    \"fechaInicio\": \"{{dia}}T09:00:00-05:00\",\n    \"fechaFin\": \"{{dia}}T10:00:00-05:00\",\n    \"numeroPersonas\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas"
+              ]
+            },
+            "description": "Respuesta esperada: 400"
+          }
+        },
+        {
+          "name": "Duración mayor a 4 horas (50003) (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idMesa\": 4,\n    \"idUsuario\": 1,\n    \"fechaInicio\": \"{{dia}}T13:00:00-05:00\",\n    \"fechaFin\": \"{{dia}}T18:00:00-05:00\",\n    \"numeroPersonas\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas"
+              ]
+            },
+            "description": "Respuesta esperada: 400"
+          }
+        },
+        {
+          "name": "Fechas invertidas (middleware) (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idMesa\": 4,\n    \"idUsuario\": 1,\n    \"fechaInicio\": \"{{dia}}T22:00:00-05:00\",\n    \"fechaFin\": \"{{dia}}T20:00:00-05:00\",\n    \"numeroPersonas\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas"
+              ]
+            },
+            "description": "Respuesta esperada: 400"
+          }
+        },
+        {
+          "name": "Listar reservas con filtros (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservas?idMesa={{idMesa}}&desde={{dia}}&hasta={{dia}}T23:59:00",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas"
+              ],
+              "query": [
+                {
+                  "key": "idMesa",
+                  "value": "{{idMesa}}"
+                },
+                {
+                  "key": "desde",
+                  "value": "{{dia}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "{{dia}}T23:59:00"
+                }
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Obtener reserva (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservas/{{idReserva}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas",
+                "{{idReserva}}"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Reprogramar reserva (dbo.ActualizarReserva) (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idMesa\": {{idMesa}},\n    \"idUsuario\": {{idUsuario}},\n    \"fechaInicio\": \"{{dia}}T13:00:00-05:00\",\n    \"fechaFin\": \"{{dia}}T15:00:00-05:00\",\n    \"numeroPersonas\": 3,\n    \"observaciones\": \"Cambiaron la cena por almuerzo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservas/{{idReserva}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas",
+                "{{idReserva}}"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Reservas de la mesa (sub-recurso) (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mesas/{{idMesa}}/reservas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas",
+                "{{idMesa}}",
+                "reservas"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Reservas del usuario (sub-recurso) (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{idUsuario}}/reservas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{idUsuario}}",
+                "reservas"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Eliminar mesa con reservas (FK) (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mesas/{{idMesa}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas",
+                "{{idMesa}}"
+              ]
+            },
+            "description": "Respuesta esperada: 409"
+          }
+        },
+        {
+          "name": "Eliminar usuario con reservas (FK) (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{idUsuario}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{idUsuario}}"
+              ]
+            },
+            "description": "Respuesta esperada: 409"
+          }
+        },
+        {
+          "name": "Cancelar reserva pasada (50012) (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservas/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas",
+                "1"
+              ]
+            },
+            "description": "Respuesta esperada: 409"
+          }
+        },
+        {
+          "name": "Reserva inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservas/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas",
+                "999999"
+              ]
+            },
+            "description": "Respuesta esperada: 404"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Comentarios (MongoDB)",
+      "item": [
+        {
+          "name": "Reseñar la reserva 6 (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Cabecera Location\", () => pm.response.to.have.header(\"Location\"));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"idComentario\", pm.response.json()._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idReserva\": 6,\n    \"calificacion\": 4,\n    \"aspectos\": {\n        \"comida\": 5,\n        \"servicio\": 4,\n        \"ambiente\": 4\n    },\n    \"texto\": \"Buena reunión en la terraza. Los anticuchos, muy ricos; el pisco sour llegó un poco tarde.\",\n    \"etiquetas\": [\n        \"anticuchos\",\n        \"grupo\"\n    ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/comentarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comentarios"
+              ]
+            },
+            "description": "Respuesta esperada: 201"
+          }
+        },
+        {
+          "name": "Segunda reseña de la misma reserva (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idReserva\": 6,\n    \"calificacion\": 5,\n    \"texto\": \"Otra reseña\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/comentarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comentarios"
+              ]
+            },
+            "description": "Respuesta esperada: 409"
+          }
+        },
+        {
+          "name": "Reseñar una reserva futura (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idReserva\": 7,\n    \"calificacion\": 5,\n    \"texto\": \"Todavía no voy\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/comentarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comentarios"
+              ]
+            },
+            "description": "Respuesta esperada: 409"
+          }
+        },
+        {
+          "name": "Calificación fuera de rango (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idReserva\": 6,\n    \"calificacion\": 9,\n    \"texto\": \"Excelente\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/comentarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comentarios"
+              ]
+            },
+            "description": "Respuesta esperada: 400"
+          }
+        },
+        {
+          "name": "Listar reseñas paginadas (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comentarios?pagina=1&limite=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comentarios"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "limite",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Reseñas de la mesa 103 con 4+ estrellas (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comentarios?idMesa=3&calificacionMinima=4",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comentarios"
+              ],
+              "query": [
+                {
+                  "key": "idMesa",
+                  "value": "3"
+                },
+                {
+                  "key": "calificacionMinima",
+                  "value": "4"
+                }
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Búsqueda de texto (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comentarios?buscar=ceviche",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comentarios"
+              ],
+              "query": [
+                {
+                  "key": "buscar",
+                  "value": "ceviche"
+                }
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Promedios por zona (aggregate) (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comentarios/resumen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comentarios",
+                "resumen"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Obtener reseña (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comentarios/{{idComentario}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comentarios",
+                "{{idComentario}}"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logs (MongoDB)",
+      "item": [
+        {
+          "name": "Últimos logs paginados (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs?pagina=1&limite=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "limite",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Solo auditoría (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs?tipo=auditoria",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "tipo",
+                  "value": "auditoria"
+                }
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Solo advertencias (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs?nivel=warn",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "nivel",
+                  "value": "warn"
+                }
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        },
+        {
+          "name": "Resumen por tipo y nivel (aggregate) (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs/resumen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "logs",
+                "resumen"
+              ]
+            },
+            "description": "Respuesta esperada: 200"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Limpieza",
+      "item": [
+        {
+          "name": "Eliminar la reseña (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comentarios/{{idComentario}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comentarios",
+                "{{idComentario}}"
+              ]
+            },
+            "description": "Respuesta esperada: 204"
+          }
+        },
+        {
+          "name": "Cancelar la reserva (dbo.CancelarReserva) (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservas/{{idReserva}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas",
+                "{{idReserva}}"
+              ]
+            },
+            "description": "Respuesta esperada: 204"
+          }
+        },
+        {
+          "name": "Cancelarla otra vez (50011) (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Error con formato uniforme\", () => pm.expect(pm.response.json()).to.have.property(\"mensaje\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservas/{{idReserva}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reservas",
+                "{{idReserva}}"
+              ]
+            },
+            "description": "Respuesta esperada: 404"
+          }
+        },
+        {
+          "name": "Eliminar la mesa (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mesas/{{idMesa}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas",
+                "{{idMesa}}"
+              ]
+            },
+            "description": "Respuesta esperada: 204"
+          }
+        },
+        {
+          "name": "Eliminar el usuario (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{idUsuario}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{idUsuario}}"
+              ]
+            },
+            "description": "Respuesta esperada: 204"
+          }
+        },
+        {
+          "name": "Método no permitido (405)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Estado 405\", () => pm.response.to.have.status(405));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mesas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mesas"
+              ]
+            },
+            "description": "Respuesta esperada: 405"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "dia",
+      "value": ""
+    },
+    {
+      "key": "idMesa",
+      "value": ""
+    },
+    {
+      "key": "idUsuario",
+      "value": ""
+    },
+    {
+      "key": "idReserva",
+      "value": ""
+    },
+    {
+      "key": "idComentario",
+      "value": ""
+    }
+  ]
+}
