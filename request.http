@@ -1,0 +1,110 @@
+# Ejecutar en orden. La limpieza elimina únicamente los registros creados aquí.
+@baseUrl = http://localhost:3000/api/v1
+@dia = {{$localDatetime 'YYYY-MM-DD' 7 d}}
+@inicio = {{dia}}T13:00:00-05:00
+@fin = {{dia}}T15:00:00-05:00
+@idCliente = {{crearCliente.response.body.idCliente}}
+@idMesa = {{crearMesa.response.body.idMesa}}
+@idReserva = {{crearReserva.response.body.idReserva}}
+
+### Recursos
+GET {{baseUrl}}
+
+### Crear cliente
+# @name crearCliente
+POST {{baseUrl}}/clientes
+Content-Type: application/json
+
+{
+  "nombres": "Cliente",
+  "apellidos": "Prueba",
+  "correo": "prueba.parcial@correo.pe",
+  "telefono": "987654321"
+}
+
+### Crear mesa
+# @name crearMesa
+POST {{baseUrl}}/mesas
+Content-Type: application/json
+
+{
+  "numero": 99,
+  "capacidad": 4,
+  "activa": true
+}
+
+### Registrar reserva
+# @name crearReserva
+POST {{baseUrl}}/reservas
+Content-Type: application/json
+
+{
+  "idCliente": {{idCliente}},
+  "idMesa": {{idMesa}},
+  "fechaInicio": "{{inicio}}",
+  "fechaFin": "{{fin}}",
+  "numeroPersonas": 2
+}
+
+### Listar clientes
+GET {{baseUrl}}/clientes
+
+### Obtener clientes
+GET {{baseUrl}}/clientes/{{idCliente}}
+
+### Actualizar clientes
+PUT {{baseUrl}}/clientes/{{idCliente}}
+Content-Type: application/json
+
+{
+  "nombres": "Cliente",
+  "apellidos": "Prueba",
+  "correo": "prueba.parcial@correo.pe",
+  "telefono": "987654321"
+}
+
+### Listar mesas
+GET {{baseUrl}}/mesas
+
+### Obtener mesas
+GET {{baseUrl}}/mesas/{{idMesa}}
+
+### Actualizar mesas
+PUT {{baseUrl}}/mesas/{{idMesa}}
+Content-Type: application/json
+
+{
+  "numero": 99,
+  "capacidad": 4,
+  "activa": true
+}
+
+### Listar reservas
+GET {{baseUrl}}/reservas
+
+### Obtener reservas
+GET {{baseUrl}}/reservas/{{idReserva}}
+
+### Actualizar reservas
+PUT {{baseUrl}}/reservas/{{idReserva}}
+Content-Type: application/json
+
+{
+  "idCliente": {{idCliente}},
+  "idMesa": {{idMesa}},
+  "fechaInicio": "{{inicio}}",
+  "fechaFin": "{{fin}}",
+  "numeroPersonas": 4
+}
+
+### Consultar logs
+GET {{baseUrl}}/logs
+
+### Eliminar reservas de prueba
+DELETE {{baseUrl}}/reservas/{{idReserva}}
+
+### Eliminar mesas de prueba
+DELETE {{baseUrl}}/mesas/{{idMesa}}
+
+### Eliminar clientes de prueba
+DELETE {{baseUrl}}/clientes/{{idCliente}}
