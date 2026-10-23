@@ -9,11 +9,6 @@ const exigirMongo = () => {
 export const logsController = {
     async listar(req, res) {
         exigirMongo();
-        res.json(await logsRepository.listar(req.validado.query));
-    },
-
-    async resumen(req, res) {
-        exigirMongo();
-        res.json(await logsRepository.resumen());
+        res.json(await logsRepository.listar());
     }
 };

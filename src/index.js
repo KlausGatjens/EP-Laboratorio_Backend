@@ -1,7 +1,7 @@
 import { app } from './app.js';
 import { config, validarConfig } from './config/env.js';
-import { cerrarMongo, coleccionesFaltantes, conectarMongo } from './db/mongodb.js';
-import { cerrarSql, conectarSql, descripcionSql, objetosSqlFaltantes } from './db/sqlserver.js';
+import { cerrarMongo, conectarMongo } from './db/mongodb.js';
+import { cerrarSql, conectarSql } from './db/sqlserver.js';
 import { logsRepository } from './repositories/logsRepository.js';
 
 let servidor;
@@ -20,30 +20,12 @@ const apagar = async (senal) => {
     setTimeout(() => process.exit(1), 10000).unref();
 };
 
-/**
- * Las bases de datos se crean desde sus propios repositorios. Si falta algo, la API
- * igual arranca, pero avisa qué script hay que ejecutar.
- */
-const verificarEstructura = async () => {
-    const faltantesSql = await objetosSqlFaltantes();
-    if (faltantesSql.length > 0) {
-        console.warn(`[SQL Server] Faltan objetos: ${faltantesSql.join(', ')}.`
-            + ' Ejecuta los scripts del repositorio EP-Laboratorio_BBDD.');
-    }
-    const faltantesMongo = await coleccionesFaltantes();
-    if (faltantesMongo.length > 0) {
-        console.warn(`[MongoDB] Faltan colecciones: ${faltantesMongo.join(', ')}.`
-            + ' Ejecuta esquemas.js del repositorio EP-Laboratorio_MongoDB.');
-    }
-};
-
 try {
     validarConfig();
     await conectarSql();
-    console.log(`[SQL Server] Conectado a ${descripcionSql()}`);
+    console.log(`[SQL Server] Conectado a ${config.sql.server}:${config.sql.port}/${config.sql.database}`);
     await conectarMongo();
     console.log(`[MongoDB] Conectado a la base ${config.mongo.database}`);
-    await verificarEstructura();
 
     servidor = app.listen(config.puerto, () => {
         console.log(`API disponible en http://localhost:${config.puerto}${config.prefijoApi}`);

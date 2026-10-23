@@ -2,13 +2,13 @@ import { Router } from 'express';
 import { reservasController } from '../controllers/reservasController.js';
 import { metodoNoPermitido } from '../middlewares/manejoErrores.js';
 import {
-    validarActualizacionReserva, validarConsultaReservas, validarId, validarReserva
+    validarActualizacionReserva, validarId, validarReserva
 } from '../middlewares/validacion.js';
 
 export const reservasRouter = Router();
 
 reservasRouter.route('/')
-    .get(validarConsultaReservas, reservasController.listar)
+    .get(reservasController.listar)
     .post(validarReserva, reservasController.crear)
     .all(metodoNoPermitido(['GET', 'POST']));
 

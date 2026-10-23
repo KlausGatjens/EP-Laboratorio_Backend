@@ -1,8 +1,8 @@
 /**
  * Traduce los errores de SQL Server a códigos HTTP.
  *
- * - 50001..50012: errores de negocio lanzados con THROW en los procedimientos
- *   almacenados (repositorio EP-Laboratorio_BBDD, DDL/04_procedimientos_almacenados.sql).
+ * - Errores: errores de negocio lanzados con THROW en el procedimiento de registro o las consultas
+ *   parametrizadas de cambios (repositorio EP-Laboratorio_BBDD, DDL/03_procedimientos_almacenados.sql).
  * - 2601 / 2627: violación de un índice o restricción UNIQUE (dato duplicado).
  * - 547: violación de FOREIGN KEY o CHECK.
  * - 515: se intentó guardar NULL en una columna obligatoria.
@@ -10,22 +10,17 @@
 const ERRORES_NEGOCIO = Object.freeze({
     50001: 400, // Fechas inválidas
     50002: 400, // Fecha pasada
-    50003: 400, // Duración fuera de rango
-    50004: 400, // Fuera del horario de atención
     50005: 404, // La mesa no existe
     50006: 409, // Mesa fuera de servicio
-    50007: 404, // El usuario no existe
+    50007: 404, // El cliente no existe
     50008: 409, // Capacidad insuficiente
     50009: 409, // Mesa ocupada en ese horario
-    50010: 409, // El usuario ya tiene otra reserva en ese horario
     50011: 404, // La reserva no existe
-    50012: 409 // La reserva ya inició o terminó
 });
 
 const MENSAJES_DUPLICADO = Object.freeze({
-    UX_Usuarios_correo: 'El correo ya está registrado',
-    UX_Mesas_numero: 'Ya existe una mesa con ese número',
-    UX_Zonas_nombre: 'Ya existe una zona con ese nombre'
+    UX_Clientes_correo: 'El correo ya está registrado',
+    UX_Mesas_numero: 'Ya existe una mesa con ese número'
 });
 
 export const numeroErrorSql = (error) => error?.number ?? error?.originalError?.info?.number;

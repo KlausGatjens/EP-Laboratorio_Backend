@@ -6,9 +6,9 @@ import { mapearErrorSql } from '../src/utils/erroresSql.js';
 
 describe('mapearErrorSql', () => {
     const casos = [
-        [50001, 400], [50002, 400], [50003, 400], [50004, 400],
+        [50001, 400], [50002, 400], 
         [50005, 404], [50006, 409], [50007, 404], [50008, 409],
-        [50009, 409], [50010, 409], [50011, 404], [50012, 409],
+        [50009, 409],  [50011, 404], 
         [515, 400]
     ];
     for (const [numero, estado] of casos) {
@@ -25,7 +25,7 @@ describe('mapearErrorSql', () => {
     it('identifica el índice UNIQUE violado', () => {
         const error = {
             number: 2601,
-            message: "Cannot insert duplicate key row in object 'dbo.Usuarios' with unique index 'UX_Usuarios_correo'."
+            message: "Cannot insert duplicate key row in object 'dbo.Clientes' with unique index 'UX_Clientes_correo'."
         };
         assert.deepEqual(mapearErrorSql(error), { estado: 409, mensaje: 'El correo ya está registrado' });
     });
@@ -36,7 +36,7 @@ describe('mapearErrorSql', () => {
     });
 
     it('547 por una clave foránea inexistente -> 404', () => {
-        const error = { number: 547, message: 'The INSERT statement conflicted with the FOREIGN KEY constraint "FK_Mesas_Zonas".' };
+        const error = { number: 547, message: 'The INSERT statement conflicted with the FOREIGN KEY constraint "FK_Reservas_Mesas".' };
         assert.equal(mapearErrorSql(error).estado, 404);
     });
 
@@ -84,10 +84,6 @@ describe('reglas de validación', () => {
         assert.ok(reglas.enteroTexto()('99999999999').error);
     });
 
-    it('booleanoTexto solo acepta true o false', () => {
-        assert.deepEqual(reglas.booleanoTexto('false'), { valor: false });
-        assert.ok(reglas.booleanoTexto('1').error);
-    });
 
     it('fechaHora exige zona horaria', () => {
         assert.deepEqual(reglas.fechaHora('2027-01-15T20:00:00-05:00'), { valor: '2027-01-15T20:00:00-05:00' });
@@ -96,20 +92,7 @@ describe('reglas de validación', () => {
         assert.ok(reglas.fechaHora('15/01/2027 20:00').error);
     });
 
-    it('fecha de filtro sin zona horaria se interpreta en hora de Lima', () => {
-        assert.deepEqual(reglas.fecha('2027-01-15'), { valor: '2027-01-15T00:00:00-05:00' });
-        assert.deepEqual(reglas.fecha('2027-01-15T20:00'), { valor: '2027-01-15T20:00-05:00' });
-        assert.deepEqual(reglas.fecha('2027-01-15T20:00:00Z'), { valor: '2027-01-15T20:00:00Z' });
-        assert.ok(reglas.fecha('ayer').error);
-    });
 
-    it('aspectos acepta solo comida, servicio y ambiente de 1 a 5', () => {
-        assert.deepEqual(reglas.aspectos({ comida: 5, servicio: 4 }), { valor: { comida: 5, servicio: 4 } });
-        assert.ok(reglas.aspectos({}).error);
-        assert.ok(reglas.aspectos({ comida: 6 }).error);
-        assert.ok(reglas.aspectos({ precio: 3 }).error);
-        assert.ok(reglas.aspectos([5]).error);
-    });
 
     it('opcional acepta undefined y null', () => {
         assert.deepEqual(reglas.opcional(reglas.texto(10))(undefined), { valor: undefined });

@@ -22,8 +22,7 @@ export const config = Object.freeze({
     sql: Object.freeze({
         server: process.env.SQL_SERVER ?? 'localhost',
         port: entero(process.env.SQL_PORT, 1433),
-        instancia: process.env.SQL_INSTANCE || undefined,
-        database: process.env.SQL_DATABASE ?? 'RestauranteDB',
+        database: process.env.SQL_DATABASE ?? 'MythosReservasDB',
         user: process.env.SQL_USER,
         password: process.env.SQL_PASSWORD,
         encrypt: booleano(process.env.SQL_ENCRYPT, false),
@@ -31,7 +30,7 @@ export const config = Object.freeze({
     }),
     mongo: Object.freeze({
         uri: process.env.MONGO_URI ?? 'mongodb://127.0.0.1:27017',
-        database: process.env.MONGO_DATABASE ?? 'RestauranteLogs'
+        database: process.env.MONGO_DATABASE ?? 'MythosLogs'
     })
 });
 
